@@ -1,23 +1,28 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, ButtonComponent, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import * as writeas from 'writeas-api';
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
+interface pluginSettings {
+	blogTarget: string;			// which blog to upload to
+	primaryAccount: string;		// the login name
+	blogList: string[];			// list of blogs
+	postType: string;			// whether to use serif, sans, or monospace
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+const DEFAULT_SETTINGS: pluginSettings = {
+	blogTarget: '',
+	primaryAccount: '',
+	blogList: [''],
+	postType: 'serif'
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class WriteAsPlugin extends Plugin {
+	settings: pluginSettings;
 
 	async onload() {
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
+		const ribbonIconEl = this.addRibbonIcon('book-plus', 'Upload post', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
 			new Notice('This is a notice!');
 		});
@@ -66,7 +71,7 @@ export default class MyPlugin extends Plugin {
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new WriteAsSettingsTab(this.app, this));
 
 		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// Using this function will automatically remove the event listener when this plugin is disabled.
@@ -107,28 +112,88 @@ class SampleModal extends Modal {
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+/****************
+ * SETTINGS
+ ****************/
 
-	constructor(app: App, plugin: MyPlugin) {
+class WriteAsSettingsTab extends PluginSettingTab {
+	plugin: WriteAsPlugin;
+	
+	blogListSetting;
+
+	constructor(app: App, plugin: WriteAsPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
+
 	display(): void {
 		const {containerEl} = this;
-
 		containerEl.empty();
 
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+		/******* BLOG LIST *******/
+		this.blogListSetting = new Setting(containerEl)
+			.setName('Blog')
+			.setDesc('Which blog to upload to')
+			.addButton(btn => btn
+				.setButtonText('Retrieve list of blogs')
+				.onClick(async () => {
+					const blogList = await this.populateBlogList(this.blogListSetting);
+					this.plugin.settings.blogList = blogList;
 					await this.plugin.saveSettings();
-				}));
+				})
+			)
+			.addDropdown(dropdown => dropdown
+				.onChange(async (newValue) => {
+					this.plugin.settings.blogTarget = newValue;
+					new Notice(`Target blog ${newValue}`);
+					await this.plugin.saveSettings();
+				})
+			)
+		;
+
+		// check to see if there's a saved list already, and populate the drop-down if so
+		if (this.plugin.settings.blogList.length > 0) {
+			const blogListDropdown = this.blogListSetting.controlEl.children[1];
+			for (let i = 0; i < this.plugin.settings.blogList.length; i++) {
+				const newItemText = this.plugin.settings.blogList[i];
+				const newOption = document.createElement('option');
+				newOption.textContent = newItemText;
+				newOption.setAttribute('value', getValueName(newItemText));
+				blogListDropdown.appendChild(newOption);
+			}
+		}
 	}
+
+	async populateBlogList(settingsObject: Setting): Promise<string[]> {
+
+		new Notice('Retrieving blog list...');
+		const blogList = await writeas.getBlogs();
+		const dropdown = settingsObject.controlEl.children[1];
+		
+		// we're refreshing the list, so remove any existing entries
+		if (dropdown.children.length > 0) {
+			const opts = dropdown.getElementsByTagName('option');
+			for (let optEl of opts) {
+				optEl.remove();
+			}
+		}
+
+		for (let i = 0; i < blogList.length; i++) {
+			const newItemText = blogList[i];
+			const newOption = document.createElement('option');
+			newOption.textContent = newItemText;
+			newOption.setAttribute('value', getValueName(newItemText));
+			dropdown.appendChild(newOption);
+		}
+
+		return blogList;
+
+	}
+}
+
+function getValueName(blogName: string): string {
+	let valName = blogName.toLowerCase();
+	valName = valName.replaceAll(' ', '-');
+	return valName;
 }
