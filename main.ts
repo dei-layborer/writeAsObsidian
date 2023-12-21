@@ -2,7 +2,6 @@ import { App, ButtonComponent, Editor, MarkdownView, Modal, Notice, Plugin, Plug
 import * as writeas from 'writeas-api';
 
 interface pluginSettings {
-	loggedInAs: string;			// username that's currently authenticated
 	blogTarget: string;			// which blog to upload to
 	primaryAccount: string;		// the login name
 	blogList: string[];			// list of blogs
@@ -10,7 +9,6 @@ interface pluginSettings {
 }
 
 const DEFAULT_SETTINGS: pluginSettings = {
-	loggedInAs: 'none',
 	blogTarget: '',
 	primaryAccount: '',
 	blogList: [''],
