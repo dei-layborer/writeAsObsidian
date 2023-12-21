@@ -1,8 +1,8 @@
 import { Notice } from 'obsidian';
 
-export function authenticate(login: string, password: string) {
+export async function authenticate(login: string, password: string): Promise<string> {
 
-
+    return '';
 
 }
 

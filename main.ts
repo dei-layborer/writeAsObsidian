@@ -2,6 +2,7 @@ import { App, ButtonComponent, Editor, MarkdownView, Modal, Notice, Plugin, Plug
 import * as writeas from 'writeas-api';
 
 interface pluginSettings {
+	loggedInAs: string;			// username that's currently authenticated
 	blogTarget: string;			// which blog to upload to
 	primaryAccount: string;		// the login name
 	blogList: string[];			// list of blogs
@@ -9,6 +10,7 @@ interface pluginSettings {
 }
 
 const DEFAULT_SETTINGS: pluginSettings = {
+	loggedInAs: 'none',
 	blogTarget: '',
 	primaryAccount: '',
 	blogList: [''],
@@ -112,6 +114,17 @@ class SampleModal extends Modal {
 	}
 }
 
+class LoginModal extends Modal {
+	constructor(app: App) {
+		super(app);
+	}
+
+	onOpen() {
+		const {contentEl} = this;
+		contentEl.setText('ok');
+	}
+}
+
 /****************
  * SETTINGS
  ****************/
@@ -120,6 +133,8 @@ class WriteAsSettingsTab extends PluginSettingTab {
 	plugin: WriteAsPlugin;
 	
 	blogListSetting;
+	postTypeSetting;
+	postTokenSetting;
 
 	constructor(app: App, plugin: WriteAsPlugin) {
 		super(app, plugin);
@@ -131,10 +146,17 @@ class WriteAsSettingsTab extends PluginSettingTab {
 		const {containerEl} = this;
 		containerEl.empty();
 
+		/******* LOGIN MODAL, SAVE TOKEN *******/
+		new Setting(containerEl)
+			.addText(
+				`Currently logged in as ${this.plugin.settings.loggedInAs}`
+			)
+		;
+
 		/******* BLOG LIST *******/
 		this.blogListSetting = new Setting(containerEl)
 			.setName('Blog')
-			.setDesc('Which blog to upload to')
+			.setDesc('Blog to upload to')
 			.addButton(btn => btn
 				.setButtonText('Retrieve list of blogs')
 				.onClick(async () => {
@@ -163,6 +185,21 @@ class WriteAsSettingsTab extends PluginSettingTab {
 				blogListDropdown.appendChild(newOption);
 			}
 		}
+
+		/******* POST TYPE (i.e. font) *******/
+		this.postTypeSetting = new Setting(containerEl)
+			.setName('Post type')
+			.setDesc('Font style to use')
+			.addDropdown(dd => dd
+					.addOption('serif', 'Serif')
+					.addOption('sans', 'Sans-serif')
+					.addOption('wrap', 'Monospace')
+					.onChange(async (newval) => {
+						this.plugin.settings.postType = newval;
+						await this.plugin.saveSettings();
+					})
+				)
+		;
 	}
 
 	async populateBlogList(settingsObject: Setting): Promise<string[]> {
