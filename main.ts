@@ -22,12 +22,14 @@ export default class WriteAsPlugin extends Plugin {
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('book-plus', 'Upload post', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
+		const ribbonIconUploadPost = this.addRibbonIcon('book-plus', 'Upload as post to current blog', (evt: MouseEvent) => {
 			new Notice('This is a notice!');
 		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
+
+		const ribbonIconUploadAnon = this.addRibbonIcon('archive-restore', 'Upload as anonymous post', (evt: MouseEvent) => {
+			new Notice ('Uploading current document as anonymous post...');
+			writeas.uploadAsAnonymousPost(this.settings);
+		});
 
 		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
 		const statusBarItemEl = this.addStatusBarItem();
